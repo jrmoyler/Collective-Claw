@@ -5,6 +5,8 @@ export class Engine {
   public renderer: THREE.WebGPURenderer;
   public timer: THREE.Timer;
 
+  private isDisposed = false;
+
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGPURenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -20,20 +22,30 @@ export class Engine {
   public async init() {
     try {
       await this.renderer.init();
+      if (this.isDisposed) {
+        this.renderer.dispose();
+      }
     } catch (e) {
       console.error("WebGPU initialization failed:", e);
     }
   }
 
   public onResize(width: number, height: number) {
+    if (this.isDisposed) return;
     this.renderer.setSize(width, height);
   }
 
   public render(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+    if (this.isDisposed) return;
     this.renderer.render(scene, camera);
   }
 
   public dispose() {
+    this.isDisposed = true;
+    this.renderer.setAnimationLoop(null);
     this.renderer.dispose();
+    if (this.renderer.domElement.parentNode) {
+      this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+    }
   }
 }

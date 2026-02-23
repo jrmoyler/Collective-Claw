@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { AGENTS } from '../data/agents';
-import { Send, User } from 'lucide-react';
+import { Send, User, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const ChatPanel: React.FC = () => {
@@ -162,7 +162,17 @@ const ChatPanel: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="p-8 border-t border-zinc-50">
+      <div className="p-8 border-t border-zinc-50 flex flex-col gap-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => sendMessage("What is your current mission?")}
+            disabled={isThinking}
+            className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Target size={14} />
+            Ask about Mission
+          </button>
+        </div>
         <div className="relative flex items-center gap-2">
           <div className="flex-1 relative">
             <textarea

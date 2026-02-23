@@ -13,11 +13,18 @@ const App: React.FC = () => {
   const managerRef = useRef<SceneManager | null>(null);
 
   useEffect(() => {
-    if (canvasRef.current && !managerRef.current) {
-      managerRef.current = new SceneManager(canvasRef.current);
-    }
+    let isMounted = true;
+    
+    // Delay creation slightly to allow previous WebGPU context to be fully destroyed during HMR
+    const timer = setTimeout(() => {
+      if (isMounted && canvasRef.current && !managerRef.current) {
+        managerRef.current = new SceneManager(canvasRef.current);
+      }
+    }, 50);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timer);
       if (managerRef.current) {
         managerRef.current.dispose();
         managerRef.current = null;

@@ -103,7 +103,8 @@ Mission: ${agent.mission}
 Personality: ${agent.personality}
 Expertise: ${agent.expertise.join(', ')}
 
-Keep your responses extremely brief (1-2 short sentences max) and professional. Introduce yourself very briefly and ask how you can help.`;
+Keep your responses extremely brief (1-2 short sentences max) and professional.
+CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific Personality and Mission. Speak and act exactly as someone with this personality and mission would. Introduce yourself very briefly and ask how you can help.`;
 
             const responseText = await geminiService.chat(
               systemInstruction,
@@ -163,7 +164,8 @@ Mission: ${agent.mission}
 Personality: ${agent.personality}
 Expertise: ${agent.expertise.join(', ')}
 
-Keep your responses extremely brief (1-2 short sentences max) and professional, matching your corporate persona.`;
+Keep your responses extremely brief (1-2 short sentences max) and professional.
+CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific Personality and Mission. Speak and act exactly as someone with this personality and mission would.`;
 
           const responseText = await geminiService.chat(
             systemInstruction,
@@ -243,6 +245,7 @@ Keep your responses extremely brief (1-2 short sentences max) and professional, 
   }
 
   private animate() {
+    if (this.isDisposed) return;
     this.engine.timer.update();
     const delta = this.engine.timer.getDelta();
     const time = this.engine.timer.getElapsed();
@@ -256,6 +259,7 @@ Keep your responses extremely brief (1-2 short sentences max) and professional, 
     //    Used for picking, camera follow, and the debug canvas/markers.
     const { isDebugOpen } = useStore.getState();
     this.characters.syncFromGPU(this.engine.renderer).then((positions) => {
+      if (this.isDisposed) return;
       if (!positions) return;
       // Run behavior logic with fresh GPU positions
       this.behaviorManager?.update(positions);
