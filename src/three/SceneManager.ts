@@ -4,6 +4,7 @@ import { Stage } from './core/Stage';
 import { CharacterManager } from './entities/CharacterManager';
 import { InputManager } from './input/InputManager';
 import { BehaviorManager } from './behavior/BehaviorManager';
+import { SpeechBubbles } from './entities/SpeechBubbles';
 import { AGENTS, PLAYER_INDEX } from '../data/agents';
 import { useStore } from '../store/useStore';
 import { AgentBehavior, ChatMessage } from '../types';
@@ -14,6 +15,7 @@ export class SceneManager {
   private engine: Engine;
   private stage: Stage;
   private characters: CharacterManager;
+  private speechBubbles: SpeechBubbles | null = null;
 
   private inputManager: InputManager | null = null;
   private behaviorManager: BehaviorManager | null = null;
@@ -53,8 +55,13 @@ export class SceneManager {
       this.behaviorManager = new BehaviorManager(
         stateBuffer,
         AGENTS,
-        (encounter) => useStore.getState().setActiveEncounter(encounter),
+        (encounter) => {
+          if (!useStore.getState().isChatting) {
+            useStore.getState().setActiveEncounter(encounter);
+          }
+        },
       );
+      this.speechBubbles = new SpeechBubbles(this.stage.scene, 500); // Max 500 agents
     }
 
     this.inputManager = new InputManager(
@@ -142,9 +149,9 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
       },
       sendMessage: async (text: string) => {
         const state = useStore.getState();
-        if (!state.activeEncounter || state.isThinking) return;
+        if (state.selectedNpcIndex === null || state.isThinking) return;
 
-        const agent = AGENTS[state.activeEncounter.npcIndex];
+        const agent = AGENTS[state.selectedNpcIndex];
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         const userMessage: ChatMessage = {
@@ -224,11 +231,13 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
           const npcIndex = state.activeEncounter.npcIndex;
           if (!state.isChatting || state.selectedNpcIndex !== npcIndex) {
             useStore.getState().setSelectedNpc(npcIndex);
-            useStore.getState().startChat(npcIndex);
+            // Do not auto-start chat; require user approval (clicking Start Chat)
           }
         } else {
           if (state.isChatting) {
             useStore.getState().endChat();
+          }
+          if (prevState.activeEncounter && state.selectedNpcIndex === prevState.activeEncounter.npcIndex) {
             useStore.getState().setSelectedNpc(null);
           }
         }
@@ -280,6 +289,11 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
         if (stateBuffer) {
           useStore.getState().setDebugStates(new Float32Array(stateBuffer.array));
         }
+      }
+
+      const stateBuffer = this.characters.getAgentStateBuffer();
+      if (stateBuffer && this.speechBubbles) {
+        this.speechBubbles.update(new Float32Array(positions), stateBuffer, this.stage.camera);
       }
     });
 
@@ -365,6 +379,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     this.unsubs.forEach(unsub => unsub());
     window.removeEventListener('resize', this.onResize);
     this.inputManager?.dispose();
+    this.speechBubbles?.dispose();
     this.engine.dispose();
     if (this.stage.controls) this.stage.controls.dispose();
   }

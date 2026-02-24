@@ -96,4 +96,5 @@ export interface ActiveEncounter {
   npcRole: string;
   npcMission: string;
   npcPersonality: string;
+  isBusy: boolean;
 }

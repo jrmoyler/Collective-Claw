@@ -22,7 +22,8 @@ const UIOverlay: React.FC = () => {
     startChat,
     endChat,
     isChatting,
-    debugStates
+    debugStates,
+    activeEncounter
   } = useStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -232,7 +233,7 @@ const UIOverlay: React.FC = () => {
               onClick={handleStartChat}
               className="w-full py-3 bg-zinc-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black active:scale-[0.98] transition-all shadow-lg shadow-zinc-200 pointer-events-auto"
             >
-              Start Chat
+              {activeEncounter?.isBusy && activeEncounter.npcIndex === selectedNpcIndex ? 'Join Conversation' : 'Start Chat'}
             </button>
           )}
         </div>

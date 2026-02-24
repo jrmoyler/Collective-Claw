@@ -150,16 +150,28 @@ export class BehaviorManager {
       }
     }
 
-    if (nearestNPC !== this.currentEncounterNPC) {
+    let isStateChanged = false;
+    if (nearestNPC !== null) {
+      const state = this.stateBuffer.getState(nearestNPC);
+      const isBusy = state === AgentBehavior.FROZEN;
+      const currentEncounter = useStore.getState().activeEncounter;
+      if (currentEncounter && currentEncounter.npcIndex === nearestNPC && currentEncounter.isBusy !== isBusy) {
+        isStateChanged = true;
+      }
+    }
+
+    if (nearestNPC !== this.currentEncounterNPC || isStateChanged) {
       this.currentEncounterNPC = nearestNPC;
       if (nearestNPC !== null) {
         const agent = this.agents[nearestNPC];
+        const state = this.stateBuffer.getState(nearestNPC);
         this.onEncounterChange({
           npcIndex: nearestNPC,
           npcDepartment: agent.department,
           npcRole: agent.role,
           npcMission: agent.mission,
           npcPersonality: agent.personality,
+          isBusy: state === AgentBehavior.FROZEN,
         });
       } else {
         this.onEncounterChange(null);
