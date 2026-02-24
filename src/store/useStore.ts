@@ -30,6 +30,8 @@ export const useStore = create<CharacterState>()(
     hoverPosition: null,
     isChatting: false,
     chatMessages: [],
+    agentLogs: [],
+    isDashboardOpen: false,
 
     performance: {
       fps: 0,
@@ -59,6 +61,7 @@ export const useStore = create<CharacterState>()(
     setThinking: (isThinking: boolean) => set({ isThinking }),
     setAIResponse: (aiResponse: string) => set({ aiResponse }),
     toggleDebug: () => set((state) => ({ isDebugOpen: !state.isDebugOpen })),
+    toggleDashboard: () => set((state) => ({ isDashboardOpen: !state.isDashboardOpen })),
     setInstanceCount: (count: number) => set({ instanceCount: count }),
     setWorldSize: (size: number) => set({ worldSize: size }),
 
@@ -77,5 +80,8 @@ export const useStore = create<CharacterState>()(
     sendMessage: async () => {},
 
     updatePerformance: (performance: PerformanceStats) => set({ performance }),
+    addAgentLog: (log) => set((state) => ({
+      agentLogs: [{ ...log, id: Math.random().toString(36).substr(2, 9), timestamp: new Date() }, ...state.agentLogs].slice(0, 500)
+    })),
   })
 );

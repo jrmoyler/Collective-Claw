@@ -22,6 +22,14 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export interface AgentLog {
+  id: string;
+  timestamp: Date;
+  type: 'conversation' | 'decision' | 'mission';
+  participants: number[];
+  details: string;
+}
+
 export interface CharacterState {
   currentAction: string;
   isThinking: boolean;
@@ -39,6 +47,8 @@ export interface CharacterState {
   hoverPosition: { x: number; y: number } | null; // Screen coordinates for hover bubble
   isChatting: boolean;
   chatMessages: ChatMessage[];
+  agentLogs: AgentLog[];
+  isDashboardOpen: boolean;
 
   performance: PerformanceStats;
 
@@ -49,6 +59,7 @@ export interface CharacterState {
   setThinking: (isThinking: boolean) => void;
   setAIResponse: (response: string) => void;
   toggleDebug: () => void;
+  toggleDashboard: () => void;
   setInstanceCount: (count: number) => void;
   setWorldSize: (size: number) => void;
   setBoidsParams: (params: Partial<BoidsParams>) => void;
@@ -62,6 +73,7 @@ export interface CharacterState {
   endChat: () => void;
   sendMessage: (text: string) => Promise<void>;
   updatePerformance: (stats: PerformanceStats) => void;
+  addAgentLog: (log: Omit<AgentLog, 'id' | 'timestamp'>) => void;
 }
 
 export enum AnimationName {

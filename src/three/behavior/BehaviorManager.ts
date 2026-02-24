@@ -94,6 +94,12 @@ export class BehaviorManager {
             const key = `${i}-${j}`;
             this.frozenPairs.set(key, { a: i, b: j, expiresAt: now + FROZEN_DURATION_MS });
 
+            useStore.getState().addAgentLog({
+              type: 'conversation',
+              participants: [i, j],
+              details: `Agent ${i} and Agent ${j} started a conversation.`
+            });
+
             if (this.frozenPairs.size >= MAX_FROZEN_PAIRS) break;
           }
         }
