@@ -28,6 +28,7 @@ export const useStore = create<CharacterState>()(
     selectedPosition: null,
     hoveredNpcIndex: null,
     hoverPosition: null,
+    playerWaypoint: null,
     isChatting: false,
     chatMessages: [],
     agentLogs: [],
@@ -73,8 +74,25 @@ export const useStore = create<CharacterState>()(
     setDebugStates: (states) => set({ debugStates: states }),
     setActiveEncounter: (encounter: ActiveEncounter | null) => set({ activeEncounter: encounter }),
     setSelectedNpc: (index: number | null) => set({ selectedNpcIndex: index, selectedPosition: null }),
-    setSelectedPosition: (pos: { x: number; y: number } | null) => set({ selectedPosition: pos }),
-    setHoveredNpc: (index: number | null, pos: { x: number; y: number } | null) => set({ hoveredNpcIndex: index, hoverPosition: pos }),
+    setSelectedPosition: (pos: { x: number; y: number } | null) => set((state) => {
+      if (!pos && !state.selectedPosition) return state;
+      if (pos && state.selectedPosition) {
+        if (Math.abs(pos.x - state.selectedPosition.x) < 1 && Math.abs(pos.y - state.selectedPosition.y) < 1) {
+          return state;
+        }
+      }
+      return { selectedPosition: pos };
+    }),
+    setHoveredNpc: (index: number | null, pos: { x: number; y: number } | null) => set((state) => {
+      if (index === state.hoveredNpcIndex && !pos && !state.hoverPosition) return state;
+      if (index === state.hoveredNpcIndex && pos && state.hoverPosition) {
+        if (Math.abs(pos.x - state.hoverPosition.x) < 1 && Math.abs(pos.y - state.hoverPosition.y) < 1) {
+          return state;
+        }
+      }
+      return { hoveredNpcIndex: index, hoverPosition: pos };
+    }),
+    setPlayerWaypoint: (pos) => set({ playerWaypoint: pos }),
     startChat: () => {},
     endChat: () => {},
     sendMessage: async () => {},

@@ -12,6 +12,7 @@ export class Stage {
 
   private followTarget: THREE.Vector3 | null = null;
   private readonly defaultTarget = new THREE.Vector3(0, 0.8, 0);
+  private waypointMarker: THREE.Mesh | null = null;
 
   constructor(rendererElement: HTMLElement) {
     this.scene = new THREE.Scene();
@@ -41,7 +42,23 @@ export class Stage {
     });
 
     this.setupLights();
+    this.setupWaypointMarker();
     // Environment is initialized with a default, but updated via updateDimensions immediately in SceneManager
+  }
+
+  private setupWaypointMarker() {
+    const geometry = new THREE.RingGeometry(0.2, 0.3, 32);
+    geometry.rotateX(-Math.PI / 2);
+    const material = new THREE.MeshBasicMaterial({ 
+      color: 0x4f46e5, // Indigo 600
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide
+    });
+    this.waypointMarker = new THREE.Mesh(geometry, material);
+    this.waypointMarker.position.y = 0.01; // Slightly above ground
+    this.waypointMarker.visible = false;
+    this.scene.add(this.waypointMarker);
   }
 
   private setupLights() {
@@ -115,5 +132,21 @@ export class Stage {
       : this.defaultTarget;
     this.controls.target.lerp(lerpTarget, 0.06);
     this.controls.update();
+
+    if (this.waypointMarker && this.waypointMarker.visible) {
+      this.waypointMarker.scale.x = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+      this.waypointMarker.scale.y = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+      this.waypointMarker.scale.z = 1 + Math.sin(Date.now() * 0.005) * 0.1;
+    }
+  }
+
+  public setWaypointMarker(pos: { x: number, z: number } | null) {
+    if (!this.waypointMarker) return;
+    if (pos) {
+      this.waypointMarker.position.set(pos.x, 0.01, pos.z);
+      this.waypointMarker.visible = true;
+    } else {
+      this.waypointMarker.visible = false;
+    }
   }
 }

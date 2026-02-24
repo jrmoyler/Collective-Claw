@@ -78,6 +78,7 @@ export class SceneManager {
         // Constrain to grid boundaries
         if (Math.abs(x) <= worldSize && Math.abs(z) <= worldSize) {
           this.behaviorManager?.setPlayerWaypoint(x, z); 
+          useStore.getState().setPlayerWaypoint({ x, z });
         }
       },
       (index, pos) => { useStore.getState().setHoveredNpc(index, pos); },
@@ -234,7 +235,13 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
       }
     });
 
-    this.unsubs.push(sub1, sub2, sub3);
+    const sub4 = useStore.subscribe((state, prevState) => {
+      if (state.playerWaypoint !== prevState.playerWaypoint) {
+        this.stage.setWaypointMarker(state.playerWaypoint);
+      }
+    });
+
+    this.unsubs.push(sub1, sub2, sub3, sub4);
   }
 
   private onResize() {
@@ -257,14 +264,18 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
 
     // 2. GPU → CPU readback (async, 1-frame lag). Keeps debugPosArray in sync with the compute shader.
     //    Used for picking, camera follow, and the debug canvas/markers.
-    const { isDebugOpen } = useStore.getState();
+    const { isDebugOpen, isDashboardOpen } = useStore.getState();
     this.characters.syncFromGPU(this.engine.renderer).then((positions) => {
       if (this.isDisposed) return;
       if (!positions) return;
       // Run behavior logic with fresh GPU positions
       this.behaviorManager?.update(positions);
+      
       if (isDebugOpen) {
         useStore.getState().setDebugPositions(new Float32Array(positions));
+      }
+      
+      if (isDebugOpen || isDashboardOpen || useStore.getState().hoveredNpcIndex !== null || useStore.getState().selectedNpcIndex !== null) {
         const stateBuffer = this.characters.getAgentStateBuffer();
         if (stateBuffer) {
           useStore.getState().setDebugStates(new Float32Array(stateBuffer.array));

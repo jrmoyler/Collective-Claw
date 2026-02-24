@@ -45,6 +45,7 @@ export interface CharacterState {
   selectedPosition: { x: number; y: number } | null; // Screen coordinates for selected bubble
   hoveredNpcIndex: number | null;     // NPC currently under the cursor
   hoverPosition: { x: number; y: number } | null; // Screen coordinates for hover bubble
+  playerWaypoint: { x: number; z: number } | null; // World coordinates for the player's destination
   isChatting: boolean;
   chatMessages: ChatMessage[];
   agentLogs: AgentLog[];
@@ -69,6 +70,7 @@ export interface CharacterState {
   setSelectedNpc: (index: number | null) => void;
   setSelectedPosition: (pos: { x: number; y: number } | null) => void;
   setHoveredNpc: (index: number | null, pos: { x: number; y: number } | null) => void;
+  setPlayerWaypoint: (pos: { x: number; z: number } | null) => void;
   startChat: (index: number) => void;
   endChat: () => void;
   sendMessage: (text: string) => Promise<void>;

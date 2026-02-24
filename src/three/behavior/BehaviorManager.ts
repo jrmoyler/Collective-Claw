@@ -114,6 +114,7 @@ export class BehaviorManager {
       const pdz = wp.z - positions[PLAYER_INDEX * 4 + 2];
       if (pdx * pdx + pdz * pdz < PLAYER_ARRIVAL_RADIUS * PLAYER_ARRIVAL_RADIUS) {
         this.stateBuffer.setState(PLAYER_INDEX, AgentBehavior.FROZEN);
+        useStore.getState().setPlayerWaypoint(null);
         
         if (this.chatNPC !== null) {
           // Face the NPC we came to talk to

@@ -143,20 +143,34 @@ export class CharacterManager {
     this.worldSize = size;
   }
 
+  private lastSyncTime = 0;
+  private isSyncing = false;
+
   /**
    * Reads back the GPU position buffer to CPU.
    * Must be called after renderer.compute() each frame.
-   * Returns the updated positions (1-frame GPU lag).
+   * Returns the updated positions (1-frame GPU lag), or null if throttled.
    */
   public async syncFromGPU(renderer: any): Promise<Float32Array | null> {
     if (!this.posAttribute) return null;
+    
+    const now = performance.now();
+    if (this.isSyncing || now - this.lastSyncTime < 50) { // Max 20fps readback
+      return null;
+    }
+    
+    this.isSyncing = true;
     try {
       const buffer = await renderer.getArrayBufferAsync(this.posAttribute);
       this.debugPosArray = new Float32Array(buffer);
+      this.lastSyncTime = performance.now();
+      return this.debugPosArray;
     } catch {
       // WebGPU readback not available – fall back to stale data
+      return null;
+    } finally {
+      this.isSyncing = false;
     }
-    return this.debugPosArray;
   }
 
   public update(delta: number, renderer: any) {

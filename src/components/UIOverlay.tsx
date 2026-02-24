@@ -5,8 +5,9 @@ import DebugPanel from './DebugPanel';
 import HelpModal from './HelpModal';
 import AgentSidebar from './AgentSidebar';
 import ChatPanel from './ChatPanel';
+import Dashboard from './Dashboard';
 import { AGENTS } from '../data/agents';
-import { HelpCircle, Users } from 'lucide-react';
+import { HelpCircle, Users, Activity } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 
 const UIOverlay: React.FC = () => {
@@ -20,13 +21,23 @@ const UIOverlay: React.FC = () => {
     hoverPosition,
     startChat,
     endChat,
-    isChatting
+    isChatting,
+    debugStates
   } = useStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const selectedAgent = selectedNpcIndex != null ? AGENTS[selectedNpcIndex] ?? null : null;
   const hoveredAgent = hoveredNpcIndex != null ? AGENTS[hoveredNpcIndex] ?? null : null;
+
+  const getAgentStateLabel = (index: number | null) => {
+    if (index === null || !debugStates) return '';
+    const state = debugStates[index * 4 + 3];
+    if (state === 0) return 'Active';
+    if (state === 1) return 'In Meeting';
+    if (state === 2) return 'Moving';
+    return 'Idle';
+  };
 
   const handleStartChat = () => {
     if (selectedNpcIndex !== null) {
@@ -70,6 +81,10 @@ const UIOverlay: React.FC = () => {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">
                     {selectedAgent.department}
                   </span>
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">·</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                    {getAgentStateLabel(selectedNpcIndex)}
+                  </span>
                 </>
               )}
             </div>
@@ -104,6 +119,10 @@ const UIOverlay: React.FC = () => {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">
                     {hoveredAgent.department}
                   </span>
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">·</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                    {getAgentStateLabel(hoveredNpcIndex)}
+                  </span>
                 </>
               )}
             </div>
@@ -132,6 +151,13 @@ const UIOverlay: React.FC = () => {
         </div>
 
         <div className="flex gap-2">
+          <button
+            onClick={() => useStore.getState().toggleDashboard()}
+            className="pointer-events-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border bg-white/80 text-zinc-500 border-black/5 hover:bg-white hover:text-zinc-900 shadow-sm flex items-center gap-2"
+          >
+            <Activity size={16} /> Dashboard
+          </button>
+
           <button
             onClick={() => setSidebarOpen(true)}
             className="pointer-events-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border bg-white/80 text-zinc-500 border-black/5 hover:bg-white hover:text-zinc-900 shadow-sm flex items-center gap-2"
@@ -211,6 +237,8 @@ const UIOverlay: React.FC = () => {
           )}
         </div>
       )}
+
+      <Dashboard />
     </div>
   );
 };
