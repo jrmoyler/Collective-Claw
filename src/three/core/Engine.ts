@@ -4,6 +4,7 @@ import * as THREE from 'three/webgpu';
 export class Engine {
   public renderer: THREE.WebGPURenderer;
   public timer: THREE.Timer;
+  public isWebGPU = false;
 
   private isDisposed = false;
 
@@ -101,6 +102,8 @@ export class Engine {
       }
 
       await this.renderer.init();
+      const backend = (this.renderer as any).backend;
+      this.isWebGPU = !(backend?.isWebGLBackend ?? true);
       
       if (this.renderer.shadowMap) {
         this.renderer.shadowMap.enabled = true;
@@ -141,6 +144,7 @@ export class Engine {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         
         await this.renderer.init();
+        this.isWebGPU = false;
         
         if (this.renderer.shadowMap) {
           this.renderer.shadowMap.enabled = true;
@@ -150,6 +154,7 @@ export class Engine {
         return true;
       } catch (fallbackErr) {
         console.error("All renderer fallbacks failed:", fallbackErr);
+        this.isWebGPU = false;
         this.renderer = this.createDummyRenderer();
         if (container && this.renderer.domElement) {
           container.appendChild(this.renderer.domElement);

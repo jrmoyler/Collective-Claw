@@ -44,8 +44,14 @@ export class SceneManager {
     this.stage = new Stage(this.engine.renderer.domElement);
     this.characters = new CharacterManager(this.stage.scene);
 
-    await this.characters.load();
+    const loaded = await this.characters.load();
+    if (!loaded) {
+      useStore.setState({ error: 'Failed to load the 3D character model. Please check your network connection and reload.' });
+      return;
+    }
     if (this.isDisposed) return;
+
+    this.characters.setMode(this.engine.isWebGPU);
 
     const state = useStore.getState();
 
