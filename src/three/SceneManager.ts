@@ -25,6 +25,7 @@ export class SceneManager {
   private lastTime = 0;
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
+  private readonly boundOnResize = this.onResize.bind(this);
 
   constructor(private container: HTMLElement) {
     this.engine = new Engine(container);
@@ -43,8 +44,14 @@ export class SceneManager {
     this.stage = new Stage(this.engine.renderer.domElement);
     this.characters = new CharacterManager(this.stage.scene);
 
-    await this.characters.load();
+    const loaded = await this.characters.load();
+    if (!loaded) {
+      useStore.setState({ error: 'Failed to load the 3D character model. Please check your network connection and reload.' });
+      return;
+    }
     if (this.isDisposed) return;
+
+    this.characters.setMode(this.engine.isWebGPU);
 
     const state = useStore.getState();
 
@@ -55,7 +62,7 @@ export class SceneManager {
     this.stage?.updateDimensions(state.worldSize);
 
     this.engine.renderer.setAnimationLoop(this.animate.bind(this));
-    window.addEventListener('resize', this.onResize.bind(this));
+    window.addEventListener('resize', this.boundOnResize);
 
     const stateBuffer = this.characters?.getAgentStateBuffer();
     if (stateBuffer && this.stage) {
@@ -289,28 +296,32 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     // 2. GPU → CPU readback (async, 1-frame lag). Keeps debugPosArray in sync with the compute shader.
     //    Used for picking, camera follow, and the debug canvas/markers.
     const { isDebugOpen, isDashboardOpen } = useStore.getState();
-    this.characters?.syncFromGPU(this.engine.renderer).then((positions) => {
-      if (this.isDisposed || !this.stage || !this.characters) return;
-      if (!positions) return;
-      // Run behavior logic with fresh GPU positions
-      this.behaviorManager?.update(positions);
-      
-      if (isDebugOpen) {
-        useStore.getState().setDebugPositions(new Float32Array(positions));
-      }
-      
-      if (isDebugOpen || isDashboardOpen || useStore.getState().hoveredNpcIndex !== null || useStore.getState().selectedNpcIndex !== null) {
-        const stateBuffer = this.characters.getAgentStateBuffer();
-        if (stateBuffer) {
-          useStore.getState().setDebugStates(new Float32Array(stateBuffer.array));
+    this.characters?.syncFromGPU(this.engine.renderer)
+      .then((positions) => {
+        if (this.isDisposed || !this.stage || !this.characters) return;
+        if (!positions) return;
+        // Run behavior logic with fresh GPU positions
+        this.behaviorManager?.update(positions);
+        
+        if (isDebugOpen) {
+          useStore.getState().setDebugPositions(new Float32Array(positions));
         }
-      }
+        
+        if (isDebugOpen || isDashboardOpen || useStore.getState().hoveredNpcIndex !== null || useStore.getState().selectedNpcIndex !== null) {
+          const stateBuffer = this.characters.getAgentStateBuffer();
+          if (stateBuffer) {
+            useStore.getState().setDebugStates(new Float32Array(stateBuffer.array));
+          }
+        }
 
-      const stateBuffer = this.characters.getAgentStateBuffer();
-      if (stateBuffer && this.speechBubbles) {
-        this.speechBubbles.update(new Float32Array(positions), stateBuffer, this.stage.camera);
-      }
-    });
+        const stateBuffer = this.characters.getAgentStateBuffer();
+        if (stateBuffer && this.speechBubbles) {
+          this.speechBubbles.update(new Float32Array(positions), stateBuffer, this.stage.camera);
+        }
+      })
+      .catch((error) => {
+        console.warn('GPU->CPU sync failed for current frame:', error);
+      });
 
     // 3. Camera follow: NPC if one is selected, otherwise always follow the player
     const { isChatting, selectedNpcIndex, setSelectedPosition } = useStore.getState();
@@ -394,10 +405,10 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
   public dispose() {
     this.isDisposed = true;
     this.unsubs.forEach(unsub => unsub());
-    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('resize', this.boundOnResize);
     this.inputManager?.dispose();
     this.speechBubbles?.dispose();
     this.engine.dispose();
-    if (this.stage.controls) this.stage.controls.dispose();
+    if (this.stage?.controls) this.stage.controls.dispose();
   }
 }

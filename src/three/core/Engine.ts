@@ -4,6 +4,7 @@ import * as THREE from 'three/webgpu';
 export class Engine {
   public renderer: THREE.WebGPURenderer;
   public timer: THREE.Timer;
+  public isWebGPU = false;
 
   private isDisposed = false;
 
@@ -13,11 +14,16 @@ export class Engine {
     const checkWebGL2 = () => {
       try {
         const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2');
+        const gl = canvas.getContext('webgl2', {
+          antialias: false,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
+        }) as WebGL2RenderingContext | null;
         if (!gl) return false;
         // Test if the context is actually functional
+        if (typeof gl.getSupportedExtensions !== 'function') return false;
         const ext = gl.getSupportedExtensions();
-        return !!ext;
+        return Array.isArray(ext);
       } catch (e) {
         return false;
       }
@@ -83,12 +89,21 @@ export class Engine {
         // If we are in WebGL mode, check if we can actually get a context
         const isWebGPU = !(this.renderer as any).backend || (this.renderer as any).backend.isWebGPUBackend;
         if (!isWebGPU) {
-          const gl = canvas.getContext('webgl2');
+          const gl = canvas.getContext('webgl2', {
+            antialias: false,
+            powerPreference: 'high-performance',
+            failIfMajorPerformanceCaveat: false,
+          }) as WebGL2RenderingContext | null;
           if (!gl) throw new Error("Could not acquire WebGL2 context from renderer canvas");
+          if (typeof gl.getSupportedExtensions !== 'function') {
+            throw new Error('WebGL2 context was created but does not expose getSupportedExtensions()');
+          }
         }
       }
 
       await this.renderer.init();
+      const backend = (this.renderer as any).backend;
+      this.isWebGPU = !(backend?.isWebGLBackend ?? true);
       
       if (this.renderer.shadowMap) {
         this.renderer.shadowMap.enabled = true;
@@ -112,7 +127,11 @@ export class Engine {
         
         // Final attempt: Create a fresh canvas and force WebGL
         const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2');
+        const gl = canvas.getContext('webgl2', {
+          antialias: false,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
+        }) as WebGL2RenderingContext | null;
         if (!gl) throw new Error("WebGL2 context unavailable for fallback");
         
         // Check if getSupportedExtensions exists on this context
@@ -125,6 +144,7 @@ export class Engine {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         
         await this.renderer.init();
+        this.isWebGPU = false;
         
         if (this.renderer.shadowMap) {
           this.renderer.shadowMap.enabled = true;
@@ -134,7 +154,11 @@ export class Engine {
         return true;
       } catch (fallbackErr) {
         console.error("All renderer fallbacks failed:", fallbackErr);
+        this.isWebGPU = false;
         this.renderer = this.createDummyRenderer();
+        if (container && this.renderer.domElement) {
+          container.appendChild(this.renderer.domElement);
+        }
         return false;
       }
     }
