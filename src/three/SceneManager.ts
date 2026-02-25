@@ -26,12 +26,14 @@ export class SceneManager {
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
   private boundOnResize: () => void;
+  private onReadyCallback?: () => void;
 
-  constructor(private container: HTMLElement) {
+  constructor(private container: HTMLElement, onReady?: () => void) {
     this.engine = new Engine(container);
     this.stage = new Stage(this.engine.renderer.domElement);
     this.characters = new CharacterManager(this.stage.scene);
     this.boundOnResize = this.onResize.bind(this);
+    this.onReadyCallback = onReady;
     this.init();
   }
 
@@ -44,8 +46,15 @@ export class SceneManager {
     if (this.isDisposed) return;
 
     // Load character model and GPU buffers before starting the loop
-    await this.characters.load();
+    const loaded = await this.characters.load();
+    if (!loaded) {
+      useStore.setState({ error: 'Failed to load the 3D character model. Please check your network connection and reload.' });
+      return;
+    }
     if (this.isDisposed) return;
+
+    // Tell CharacterManager which simulation path to use based on actual backend.
+    this.characters.setMode(this.engine.isWebGPU);
 
     const state = useStore.getState();
 
@@ -295,6 +304,9 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     });
 
     this.unsubs.push(sub1, sub2, sub3, sub4);
+
+    // Notify App.tsx that the scene is fully initialised and ready to render.
+    this.onReadyCallback?.();
   }
 
   private onResize() {
