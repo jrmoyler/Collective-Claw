@@ -69,7 +69,7 @@ const ChatPanel: React.FC = () => {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white border-l border-zinc-100 shadow-2xl z-50 flex flex-col pointer-events-auto overflow-hidden"
+      className="fixed top-0 right-0 w-[400px] h-full bg-white border-l border-zinc-100 shadow-2xl z-50 flex flex-col pointer-events-auto overflow-hidden"
     >
       {/* Color accent bar */}
       <div 
@@ -77,7 +77,7 @@ const ChatPanel: React.FC = () => {
         style={{ backgroundColor: agent.color }}
       />
       {/* Header */}
-      <div className="p-4 sm:p-8 border-b border-zinc-100 flex justify-between items-end bg-white/80 backdrop-blur-md sticky top-0 z-10">
+      <div className="p-8 border-b border-zinc-100 flex justify-between items-end bg-white/80 backdrop-blur-md sticky top-0 z-10">
         <div>
           <h2 className="text-3xl font-black text-zinc-900 tracking-tight">Chat</h2>
         </div>
@@ -90,7 +90,7 @@ const ChatPanel: React.FC = () => {
       {/* Messages */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:display-none"
+        className="flex-1 overflow-y-auto p-8 space-y-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:display-none"
       >
         <AnimatePresence initial={false}>
           {chatMessages.map((msg, i) => (
@@ -162,7 +162,7 @@ const ChatPanel: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="p-4 sm:p-8 border-t border-zinc-50 flex flex-col gap-4">
+      <div className="p-8 border-t border-zinc-50 flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => sendMessage("What is your current mission?")}

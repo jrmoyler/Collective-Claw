@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { AGENTS, DEPARTMENTS } from '../data/agents';
-import { X, Edit2, Plus, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Edit2, Plus, Users } from 'lucide-react';
 
 interface AgentSidebarProps {
   isOpen: boolean;
@@ -9,10 +9,9 @@ interface AgentSidebarProps {
 }
 
 const AgentSidebar: React.FC<AgentSidebarProps> = ({ isOpen, onClose }) => {
-  const { agentsVersion, updateAgent, addAgent, instanceCount } = useStore();
+  const { agentsVersion, updateAgent, addAgent } = useStore();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [showAll, setShowAll] = useState(false);
 
   const [role, setRole] = useState('');
   const [department, setDepartment] = useState('');
@@ -166,44 +165,25 @@ const AgentSidebar: React.FC<AgentSidebarProps> = ({ isOpen, onClose }) => {
             </button>
             
             <div className="space-y-2">
-              {(() => {
-                const activeCount = Math.min(instanceCount, AGENTS.length);
-                const visibleAgents = showAll ? AGENTS : AGENTS.slice(0, activeCount);
-                return (
-                  <>
-                    {visibleAgents.map((agent, idx) => (
-                      <div key={idx} className="p-3 border border-gray-100 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow bg-white group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: agent.color }} />
-                          <div>
-                            <div className="font-bold text-sm text-gray-900">{agent.role} {agent.isPlayer && '(You)'}</div>
-                            <div className="text-xs text-gray-500 font-medium">{agent.department}</div>
-                          </div>
-                        </div>
-                        {!agent.isPlayer && (
-                          <button
-                            onClick={() => openEdit(idx)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-indigo-50 opacity-0 group-hover:opacity-100 transition-all"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {AGENTS.length > activeCount && (
-                      <button
-                        onClick={() => setShowAll(v => !v)}
-                        className="w-full py-2 text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center justify-center gap-1 transition-colors"
-                      >
-                        {showAll
-                          ? <><ChevronUp size={14} /> Show active only ({activeCount})</>
-                          : <><ChevronDown size={14} /> Show all {AGENTS.length} agents</>
-                        }
-                      </button>
-                    )}
-                  </>
-                );
-              })()}
+              {AGENTS.map((agent, idx) => (
+                <div key={idx} className="p-3 border border-gray-100 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow bg-white group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: agent.color }} />
+                    <div>
+                      <div className="font-bold text-sm text-gray-900">{agent.role} {agent.isPlayer && '(You)'}</div>
+                      <div className="text-xs text-gray-500 font-medium">{agent.department}</div>
+                    </div>
+                  </div>
+                  {!agent.isPlayer && (
+                    <button 
+                      onClick={() => openEdit(idx)} 
+                      className="p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-indigo-50 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

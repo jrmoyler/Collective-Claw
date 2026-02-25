@@ -13,8 +13,8 @@ import * as THREE from 'three/webgpu';
 
 export class SceneManager {
   private engine: Engine;
-  private stage: Stage;
-  private characters: CharacterManager;
+  private stage: Stage | null = null;
+  private characters: CharacterManager | null = null;
   private speechBubbles: SpeechBubbles | null = null;
 
   private inputManager: InputManager | null = null;
@@ -25,15 +25,9 @@ export class SceneManager {
   private lastTime = 0;
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
-  private boundOnResize: () => void;
-  private onReadyCallback?: () => void;
 
-  constructor(private container: HTMLElement, onReady?: () => void) {
+  constructor(private container: HTMLElement) {
     this.engine = new Engine(container);
-    this.stage = new Stage(this.engine.renderer.domElement);
-    this.characters = new CharacterManager(this.stage.scene);
-    this.boundOnResize = this.onResize.bind(this);
-    this.onReadyCallback = onReady;
     this.init();
   }
 
@@ -45,34 +39,26 @@ export class SceneManager {
     }
     if (this.isDisposed) return;
 
-    // Load character model and GPU buffers before starting the loop
-    const loaded = await this.characters.load();
-    if (!loaded) {
-      useStore.setState({ error: 'Failed to load the 3D character model. Please check your network connection and reload.' });
-      return;
-    }
-    if (this.isDisposed) return;
+    // Only create stage and characters after successful engine init
+    this.stage = new Stage(this.engine.renderer.domElement);
+    this.characters = new CharacterManager(this.stage.scene);
 
-    // Tell CharacterManager which simulation path to use based on actual backend.
-    this.characters.setMode(this.engine.isWebGPU);
+    await this.characters.load();
+    if (this.isDisposed) return;
 
     const state = useStore.getState();
 
-    // Initial sync — only call setInstanceCount when it differs from the default (100)
-    // so we don't trigger an unnecessary reinit. updateBoidsParams / updateWorldSize
-    // are safe to call at any time.
-    if (state.instanceCount !== 100) {
-      this.characters.setInstanceCount(state.instanceCount);
-    }
-    this.characters.updateBoidsParams(state.boidsParams);
-    this.characters.updateWorldSize(state.worldSize);
-    this.stage.updateDimensions(state.worldSize);
+    // Initial sync
+    this.characters?.setInstanceCount(state.instanceCount);
+    this.characters?.updateBoidsParams(state.boidsParams);
+    this.characters?.updateWorldSize(state.worldSize);
+    this.stage?.updateDimensions(state.worldSize);
 
     this.engine.renderer.setAnimationLoop(this.animate.bind(this));
-    window.addEventListener('resize', this.boundOnResize);
+    window.addEventListener('resize', this.onResize.bind(this));
 
-    const stateBuffer = this.characters.getAgentStateBuffer();
-    if (stateBuffer) {
+    const stateBuffer = this.characters?.getAgentStateBuffer();
+    if (stateBuffer && this.stage) {
       this.behaviorManager = new BehaviorManager(
         stateBuffer,
         AGENTS,
@@ -87,9 +73,9 @@ export class SceneManager {
 
     this.inputManager = new InputManager(
       this.engine.renderer.domElement,
-      this.stage.camera,
-      () => this.characters.getCPUPositions(),
-      () => this.characters.getCount(),
+      this.stage?.camera as any,
+      () => this.characters?.getCPUPositions() ?? null,
+      () => this.characters?.getCount() ?? 0,
       (index) => {
         this.selectedIndex = index;
         // Update store: null = default (follow player), number = selected NPC
@@ -114,7 +100,7 @@ export class SceneManager {
 
     useStore.setState({
       startChat: async (index: number) => {
-        const positions = this.characters.getCPUPositions();
+        const positions = this.characters?.getCPUPositions();
         if (positions) {
           this.behaviorManager?.startChat(index, positions);
           useStore.setState({ 
@@ -152,22 +138,11 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
               isThinking: false 
             }));
             
-            this.characters.fadeToAction('Wave');
-            setTimeout(() => this.characters.fadeToAction('Idle'), 2000);
-          } catch (error: any) {
+            this.characters?.fadeToAction('Wave');
+            setTimeout(() => this.characters?.fadeToAction('Idle'), 2000);
+          } catch (error) {
             console.error("Auto-presentation error:", error);
-            const isKeyError = error?.message?.includes('GEMINI_API_KEY');
-            const modelMessage: ChatMessage = {
-              role: 'model',
-              text: isKeyError
-                ? "⚠️ AI chat is unavailable: GEMINI_API_KEY is not configured. Please add it to your Vercel environment variables."
-                : "Sorry, I'm having trouble connecting right now.",
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            useStore.setState((s) => ({
-              chatMessages: [modelMessage],
-              isThinking: false
-            }));
+            useStore.setState({ isThinking: false });
           }
         }
       },
@@ -224,25 +199,12 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
             isThinking: false 
           }));
           
-          this.characters.fadeToAction('Wave');
-          setTimeout(() => this.characters.fadeToAction('Idle'), 2000);
+          this.characters?.fadeToAction('Wave');
+          setTimeout(() => this.characters?.fadeToAction('Idle'), 2000);
 
-        } catch (error: any) {
+        } catch (error) {
           console.error("Gemini Error:", error);
-          const isKeyError = error?.message?.includes('GEMINI_API_KEY');
-          if (isKeyError) {
-            const errMsg: ChatMessage = {
-              role: 'model',
-              text: "⚠️ AI chat is unavailable: GEMINI_API_KEY is not configured.",
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            useStore.setState((s) => ({
-              chatMessages: [...s.chatMessages, errMsg],
-              isThinking: false
-            }));
-          } else {
-            useStore.setState({ isThinking: false });
-          }
+          useStore.setState({ isThinking: false });
         }
       }
     });
@@ -304,9 +266,6 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     });
 
     this.unsubs.push(sub1, sub2, sub3, sub4);
-
-    // Notify App.tsx that the scene is fully initialised and ready to render.
-    this.onReadyCallback?.();
   }
 
   private onResize() {
@@ -322,16 +281,16 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     const delta = this.engine.timer.getDelta();
     const time = this.engine.timer.getElapsed();
 
-    this.stage.update();
+    this.stage?.update();
 
     // 1. GPU Update
-    this.characters.update(delta, this.engine.renderer);
+    this.characters?.update(delta, this.engine.renderer);
 
     // 2. GPU → CPU readback (async, 1-frame lag). Keeps debugPosArray in sync with the compute shader.
     //    Used for picking, camera follow, and the debug canvas/markers.
     const { isDebugOpen, isDashboardOpen } = useStore.getState();
-    this.characters.syncFromGPU(this.engine.renderer).then((positions) => {
-      if (this.isDisposed) return;
+    this.characters?.syncFromGPU(this.engine.renderer).then((positions) => {
+      if (this.isDisposed || !this.stage || !this.characters) return;
       if (!positions) return;
       // Run behavior logic with fresh GPU positions
       this.behaviorManager?.update(positions);
@@ -356,11 +315,11 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     // 3. Camera follow: NPC if one is selected, otherwise always follow the player
     const { isChatting, selectedNpcIndex, setSelectedPosition } = useStore.getState();
     const followIdx = this.selectedIndex ?? PLAYER_INDEX;
-    const pos = this.characters.getCPUPosition(followIdx);
-    this.stage.setFollowTarget(pos);
+    const pos = this.characters?.getCPUPosition(followIdx);
+    this.stage?.setFollowTarget(pos ?? null);
 
     // Update selected NPC screen position for UI bubble
-    if (selectedNpcIndex !== null) {
+    if (selectedNpcIndex !== null && this.characters && this.stage) {
       const npcPos = this.characters.getCPUPosition(selectedNpcIndex);
       if (npcPos) {
         const screenPos = npcPos.clone();
@@ -376,7 +335,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     }
 
     // 4. Chat camera logic
-    if (isChatting) {
+    if (isChatting && this.stage && this.characters) {
       // Disable controls while moving to NPC
       const playerState = this.characters.getAgentState(PLAYER_INDEX);
       if (playerState === AgentBehavior.GOTO) {
@@ -395,7 +354,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
           this.stage.controls.maxDistance = THREE.MathUtils.lerp(this.stage.controls.maxDistance, 10, 0.05);
         }
       }
-    } else {
+    } else if (this.stage) {
       // Reset camera constraints when not chatting
       if (this.stage.controls) {
         this.stage.controls.enabled = true;
@@ -404,7 +363,9 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
       }
     }
 
-    this.engine.render(this.stage.scene, this.stage.camera);
+    if (this.stage) {
+      this.engine.render(this.stage.scene, this.stage.camera);
+    }
 
     this.updateStats(time);
   }
@@ -414,7 +375,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
     if (this.frameCount >= 20) {
       const fps = Math.round(20 / (time - this.lastTime));
       const info = this.engine.renderer.info;
-      const count = this.characters.getCount();
+      const count = this.characters?.getCount() ?? 0;
 
       useStore.getState().updatePerformance({
         fps,
@@ -433,7 +394,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
   public dispose() {
     this.isDisposed = true;
     this.unsubs.forEach(unsub => unsub());
-    window.removeEventListener('resize', this.boundOnResize);
+    window.removeEventListener('resize', this.onResize);
     this.inputManager?.dispose();
     this.speechBubbles?.dispose();
     this.engine.dispose();

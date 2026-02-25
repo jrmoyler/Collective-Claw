@@ -16,26 +16,10 @@ export class SpeechBubbles {
     canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
     
-    // Draw speech bubble — roundRect polyfill for Safari < 15.4 / Firefox < 112
-    const roundRect = (
-      c: CanvasRenderingContext2D,
-      x: number, y: number, w: number, h: number, r: number
-    ) => {
-      if (typeof c.roundRect === 'function') {
-        c.roundRect(x, y, w, h, r);
-      } else {
-        c.moveTo(x + r, y);
-        c.arcTo(x + w, y,     x + w, y + h, r);
-        c.arcTo(x + w, y + h, x,     y + h, r);
-        c.arcTo(x,     y + h, x,     y,     r);
-        c.arcTo(x,     y,     x + w, y,     r);
-        c.closePath();
-      }
-    };
-
+    // Draw speech bubble
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.beginPath();
-    roundRect(ctx, 16, 16, 96, 64, 16);
+    ctx.roundRect(16, 16, 96, 64, 16);
     ctx.fill();
     
     // Tail

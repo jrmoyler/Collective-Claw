@@ -15,19 +15,4 @@ body {
   margin: 0;
   font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   background: #ffffff;
-  /* Prevent pull-to-refresh and elastic overscroll on mobile */
-  overscroll-behavior: none;
-  /* Prevent iOS from auto-zooming text */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-/* Prevent 300ms tap delay on buttons and interactive elements */
-button,
-a,
-[role="button"],
-input,
-select,
-textarea {
-  touch-action: manipulation;
 }

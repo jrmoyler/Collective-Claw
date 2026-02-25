@@ -64,4 +64,4 @@ Non-Commercial: You may not use these assets or their derivatives for commercial
 
 To view a copy of this license, visit: CC BY-NC 4.0
 
-Developed with ❤️ by John-Ross Moyler
+Developed with ❤️ by Arturo Paracuellos
