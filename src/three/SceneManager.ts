@@ -25,11 +25,13 @@ export class SceneManager {
   private lastTime = 0;
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
+  private boundOnResize: () => void;
 
   constructor(private container: HTMLElement) {
     this.engine = new Engine(container);
     this.stage = new Stage(this.engine.renderer.domElement);
     this.characters = new CharacterManager(this.stage.scene);
+    this.boundOnResize = this.onResize.bind(this);
     this.init();
   }
 
@@ -41,16 +43,24 @@ export class SceneManager {
     }
     if (this.isDisposed) return;
 
+    // Load character model and GPU buffers before starting the loop
+    await this.characters.load();
+    if (this.isDisposed) return;
+
     const state = useStore.getState();
 
-    // Initial sync
-    this.characters.setInstanceCount(state.instanceCount);
+    // Initial sync — only call setInstanceCount when it differs from the default (100)
+    // so we don't trigger an unnecessary reinit. updateBoidsParams / updateWorldSize
+    // are safe to call at any time.
+    if (state.instanceCount !== 100) {
+      this.characters.setInstanceCount(state.instanceCount);
+    }
     this.characters.updateBoidsParams(state.boidsParams);
     this.characters.updateWorldSize(state.worldSize);
     this.stage.updateDimensions(state.worldSize);
 
     this.engine.renderer.setAnimationLoop(this.animate.bind(this));
-    window.addEventListener('resize', this.onResize.bind(this));
+    window.addEventListener('resize', this.boundOnResize);
 
     const stateBuffer = this.characters.getAgentStateBuffer();
     if (stateBuffer) {
@@ -135,9 +145,20 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
             
             this.characters.fadeToAction('Wave');
             setTimeout(() => this.characters.fadeToAction('Idle'), 2000);
-          } catch (error) {
+          } catch (error: any) {
             console.error("Auto-presentation error:", error);
-            useStore.setState({ isThinking: false });
+            const isKeyError = error?.message?.includes('GEMINI_API_KEY');
+            const modelMessage: ChatMessage = {
+              role: 'model',
+              text: isKeyError
+                ? "⚠️ AI chat is unavailable: GEMINI_API_KEY is not configured. Please add it to your Vercel environment variables."
+                : "Sorry, I'm having trouble connecting right now.",
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            useStore.setState((s) => ({
+              chatMessages: [modelMessage],
+              isThinking: false
+            }));
           }
         }
       },
@@ -197,9 +218,22 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
           this.characters.fadeToAction('Wave');
           setTimeout(() => this.characters.fadeToAction('Idle'), 2000);
 
-        } catch (error) {
+        } catch (error: any) {
           console.error("Gemini Error:", error);
-          useStore.setState({ isThinking: false });
+          const isKeyError = error?.message?.includes('GEMINI_API_KEY');
+          if (isKeyError) {
+            const errMsg: ChatMessage = {
+              role: 'model',
+              text: "⚠️ AI chat is unavailable: GEMINI_API_KEY is not configured.",
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            useStore.setState((s) => ({
+              chatMessages: [...s.chatMessages, errMsg],
+              isThinking: false
+            }));
+          } else {
+            useStore.setState({ isThinking: false });
+          }
         }
       }
     });
@@ -387,7 +421,7 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
   public dispose() {
     this.isDisposed = true;
     this.unsubs.forEach(unsub => unsub());
-    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('resize', this.boundOnResize);
     this.inputManager?.dispose();
     this.speechBubbles?.dispose();
     this.engine.dispose();
