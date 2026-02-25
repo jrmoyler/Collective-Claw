@@ -94,7 +94,7 @@ const DebugPanel: React.FC = () => {
   if (!isDebugOpen) return null;
 
   return (
-    <div className="fixed top-20 right-8 w-80 bg-white/80 backdrop-blur-2xl rounded-2xl border border-black/5 shadow-2xl p-5 pointer-events-auto text-zinc-900 animate-in fade-in slide-in-from-right-4 duration-300 overflow-y-auto max-h-[85vh] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:display-none z-30">
+    <div className="fixed top-14 sm:top-20 right-0 sm:right-8 w-full sm:w-80 bg-white/80 backdrop-blur-2xl sm:rounded-2xl border-t sm:border border-black/5 shadow-2xl p-4 sm:p-5 pointer-events-auto text-zinc-900 animate-in fade-in slide-in-from-right-4 duration-300 overflow-y-auto max-h-[80vh] sm:max-h-[85vh] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:display-none z-30">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xs font-black uppercase tracking-widest text-zinc-400">System Performance</h2>
         <div className={`h-2 w-2 rounded-full ${performance.fps > 50 ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />

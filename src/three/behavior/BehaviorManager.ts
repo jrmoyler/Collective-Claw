@@ -133,12 +133,21 @@ export class BehaviorManager {
       for (let i = 1; i < count - 1; i++) {
         if (this.frozenIndices.has(i)) continue;
         if (this.stateBuffer.getState(i) !== AgentBehavior.BOIDS) continue;
-        if (this.unfreezeTimestamps.has(i)) continue; // cooling down
+        // Check cooldown — clear expired entries so NPCs can collide again.
+        const utI = this.unfreezeTimestamps.get(i);
+        if (utI !== undefined) {
+          if (now - utI < UNFREEZE_COOLDOWN_MS) continue;
+          this.unfreezeTimestamps.delete(i);
+        }
 
         for (let j = i + 1; j < count; j++) {
           if (this.frozenIndices.has(j)) continue;
           if (this.stateBuffer.getState(j) !== AgentBehavior.BOIDS) continue;
-          if (this.unfreezeTimestamps.has(j)) continue; // cooling down
+          const utJ = this.unfreezeTimestamps.get(j);
+          if (utJ !== undefined) {
+            if (now - utJ < UNFREEZE_COOLDOWN_MS) continue;
+            this.unfreezeTimestamps.delete(j);
+          }
 
           const dx = positions[i * 4] - positions[j * 4];
           const dz = positions[i * 4 + 2] - positions[j * 4 + 2];
