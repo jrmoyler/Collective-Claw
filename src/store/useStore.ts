@@ -30,9 +30,12 @@ export const useStore = create<CharacterState>()(
     hoverPosition: null,
     playerWaypoint: null,
     isChatting: false,
+    isPaused: false,
+    timeScale: 1.0,
     chatMessages: [],
     agentLogs: [],
     isDashboardOpen: false,
+    error: null,
 
     performance: {
       fps: 0,
@@ -93,6 +96,8 @@ export const useStore = create<CharacterState>()(
       return { hoveredNpcIndex: index, hoverPosition: pos };
     }),
     setPlayerWaypoint: (pos) => set({ playerWaypoint: pos }),
+    setPaused: (paused: boolean) => set({ isPaused: paused }),
+    setTimeScale: (scale: number) => set({ timeScale: scale }),
     startChat: () => {},
     endChat: () => {},
     sendMessage: async () => {},

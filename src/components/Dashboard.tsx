@@ -2,11 +2,21 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { AgentBehavior } from '../types';
 import { AGENTS } from '../data/agents';
-import { X, Activity, MessageSquare, Target } from 'lucide-react';
+import { X, Activity, MessageSquare, Target, Play, Pause, FastForward, RotateCcw } from 'lucide-react';
 import * as d3 from 'd3';
 
 const Dashboard: React.FC = () => {
-  const { isDashboardOpen, toggleDashboard, agentLogs, debugStates, instanceCount } = useStore();
+  const { 
+    isDashboardOpen, 
+    toggleDashboard, 
+    agentLogs, 
+    debugStates, 
+    instanceCount,
+    isPaused,
+    setPaused,
+    timeScale,
+    setTimeScale
+  } = useStore();
   const graphRef = useRef<HTMLDivElement>(null);
 
   // Calculate agent stats
@@ -154,6 +164,55 @@ const Dashboard: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-6">
           {/* Stats & Graph Column */}
           <div className="col-span-2 flex flex-col gap-6">
+            {/* Simulation Controls */}
+            <div className="bg-zinc-900 text-white p-6 rounded-2xl shadow-inner flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPaused(!isPaused)}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                      isPaused ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-amber-500 hover:bg-amber-400'
+                    }`}
+                  >
+                    {isPaused ? <Play className="fill-white" /> : <Pause className="fill-white" />}
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-zinc-500">Status</span>
+                    <span className="text-sm font-bold">{isPaused ? 'Paused' : 'Running'}</span>
+                  </div>
+                </div>
+
+                <div className="h-10 w-px bg-white/10" />
+
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-zinc-500">Simulation Speed</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="5"
+                        step="0.1"
+                        value={timeScale}
+                        onChange={(e) => setTimeScale(parseFloat(e.target.value))}
+                        className="w-32 accent-indigo-500"
+                      />
+                      <span className="text-sm font-mono font-bold w-8">{timeScale.toFixed(1)}x</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setTimeScale(1.0)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white flex items-center gap-2 text-xs font-bold"
+                >
+                  <RotateCcw size={14} /> Reset Speed
+                </button>
+              </div>
+            </div>
+
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">

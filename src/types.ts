@@ -47,9 +47,12 @@ export interface CharacterState {
   hoverPosition: { x: number; y: number } | null; // Screen coordinates for hover bubble
   playerWaypoint: { x: number; z: number } | null; // World coordinates for the player's destination
   isChatting: boolean;
+  isPaused: boolean;
+  timeScale: number;
   chatMessages: ChatMessage[];
   agentLogs: AgentLog[];
   isDashboardOpen: boolean;
+  error: string | null;
 
   performance: PerformanceStats;
 
@@ -71,6 +74,8 @@ export interface CharacterState {
   setSelectedPosition: (pos: { x: number; y: number } | null) => void;
   setHoveredNpc: (index: number | null, pos: { x: number; y: number } | null) => void;
   setPlayerWaypoint: (pos: { x: number; z: number } | null) => void;
+  setPaused: (paused: boolean) => void;
+  setTimeScale: (scale: number) => void;
   startChat: (index: number) => void;
   endChat: () => void;
   sendMessage: (text: string) => Promise<void>;

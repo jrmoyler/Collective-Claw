@@ -26,7 +26,7 @@ export class SceneManager {
   private unsubs: (() => void)[] = [];
   private isDisposed = false;
 
-  constructor(container: HTMLElement) {
+  constructor(private container: HTMLElement) {
     this.engine = new Engine(container);
     this.stage = new Stage(this.engine.renderer.domElement);
     this.characters = new CharacterManager(this.stage.scene);
@@ -34,9 +34,11 @@ export class SceneManager {
   }
 
   private async init() {
-    await this.engine.init();
-    if (this.isDisposed) return;
-    await this.characters.load();
+    const success = await this.engine.init(this.container);
+    if (!success) {
+      useStore.setState({ error: 'Failed to initialize 3D Graphics. Your browser may not support WebGPU or WebGL2, or hardware acceleration might be disabled.' });
+      return;
+    }
     if (this.isDisposed) return;
 
     const state = useStore.getState();
@@ -222,6 +224,14 @@ CRITICAL INSTRUCTION: Your responses MUST be heavily influenced by your specific
       if (state.worldSize !== prevState.worldSize) {
         this.characters.updateWorldSize(state.worldSize);
         this.stage.updateDimensions(state.worldSize);
+      }
+
+      // Update Simulation Controls
+      if (state.isPaused !== prevState.isPaused) {
+        this.characters.setPaused(state.isPaused);
+      }
+      if (state.timeScale !== prevState.timeScale) {
+        this.characters.setTimeScale(state.timeScale);
       }
     });
 

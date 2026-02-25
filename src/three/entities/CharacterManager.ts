@@ -66,6 +66,8 @@ export class CharacterManager {
   private uSeparationRadius = uniform(0.6);
   private uSeparationStrength = uniform(0.030);
   private uWorldSize = uniform(20.0);
+  private uPaused = uniform(0.0); // 0 = running, 1 = paused
+  private uTimeScale = uniform(1.0);
   private worldSize = 20.0;
 
   public isLoaded = false;
@@ -141,6 +143,14 @@ export class CharacterManager {
   public updateWorldSize(size: number) {
     this.uWorldSize.value = size;
     this.worldSize = size;
+  }
+
+  public setPaused(paused: boolean) {
+    this.uPaused.value = paused ? 1.0 : 0.0;
+  }
+
+  public setTimeScale(scale: number) {
+    this.uTimeScale.value = scale;
   }
 
   private lastSyncTime = 0;
@@ -254,6 +264,13 @@ export class CharacterManager {
 
       const pos = posElement.xyz.toVar();
 
+      // Skip all updates if paused
+      If(this.uPaused.equal(float(1.0)), () => {
+        return;
+      });
+
+      const effectiveSpeed = this.uSpeed.mul(this.uTimeScale);
+
       // ── FROZEN (state ≈ 1, between 0.5 and 1.5) ─────────────
       If(agentState.greaterThan(float(0.5)), () => {
 
@@ -263,7 +280,7 @@ export class CharacterManager {
           const toTarget = waypointXZ.sub(pos);
           const dist = toTarget.length();
           If(dist.greaterThan(float(0.2)), () => {
-            const gotoVel = toTarget.normalize().mul(this.uSpeed.mul(3.0));
+            const gotoVel = toTarget.normalize().mul(effectiveSpeed.mul(3.0));
             velElement.assign(vec4(gotoVel, 0.0));
             posElement.assign(vec4(pos.add(gotoVel), 1.0));
           }).Else(() => {
@@ -303,9 +320,9 @@ export class CharacterManager {
         const newVel = vel.add(accel).toVar();
         const speed  = newVel.length();
         If(speed.greaterThan(0.001), () => {
-          newVel.assign(newVel.normalize().mul(this.uSpeed));
+          newVel.assign(newVel.normalize().mul(effectiveSpeed));
         }).Else(() => {
-          newVel.assign(vec3(0, 0, this.uSpeed));
+          newVel.assign(vec3(0, 0, effectiveSpeed));
         });
 
         velElement.assign(vec4(newVel, 0.0));
@@ -380,7 +397,7 @@ export class CharacterManager {
         const isFrozen = agentState.greaterThan(float(0.5)).and(agentState.lessThan(float(1.5)));
 
         const buildSkinMat = (animBuf: any, numFrames: number, duration: number) => {
-          const animTime = time.add(timeOffset);
+          const animTime = time.add(timeOffset).mul(this.uTimeScale);
           const t = animTime.div(float(duration)).fract();
           const currentFrame = uint(t.mul(float(numFrames)));
           const safeFrame = currentFrame.min(uint(numFrames - 1));

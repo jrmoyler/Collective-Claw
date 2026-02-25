@@ -24,6 +24,8 @@ export class BehaviorManager {
   private unfreezeTimestamps = new Map<number, number>(); // index → time of last unfreeze
   private currentEncounterNPC: number | null = null;
   private chatNPC: number | null = null; // NPC player is currently moving to talk to
+  private nextDecisionTimes = new Map<number, number>(); // index → time of next autonomous decision
+  private agentMissions = new Map<number, { type: 'idle' | 'goto', target?: { x: number, z: number } }>();
 
   constructor(
     private stateBuffer: AgentStateBuffer,
@@ -39,6 +41,9 @@ export class BehaviorManager {
   //  Per-frame update  (call after GPU readback)
   // ─────────────────────────────────────────────────────────────
   public update(positions: Float32Array): void {
+    const { isPaused, timeScale, worldSize } = useStore.getState();
+    if (isPaused) return;
+
     const now = Date.now();
     const count = this.agents.length;
 
@@ -48,9 +53,6 @@ export class BehaviorManager {
         this.stateBuffer.setState(pair.a, AgentBehavior.BOIDS);
         this.stateBuffer.setState(pair.b, AgentBehavior.BOIDS);
         
-        // When unfreezing, we don't need to do anything special here anymore
-        // as the BOIDS logic on GPU will take over.
-
         this.frozenIndices.delete(pair.a);
         this.frozenIndices.delete(pair.b);
         this.unfreezeTimestamps.set(pair.a, now);
@@ -59,12 +61,74 @@ export class BehaviorManager {
       }
     }
 
-    // Clean up expired cooldowns
-    for (const [idx, ts] of this.unfreezeTimestamps) {
-      if (now - ts > UNFREEZE_COOLDOWN_MS) this.unfreezeTimestamps.delete(idx);
+    // 2. Autonomous Decision Making
+    for (let i = 1; i < count; i++) {
+      if (this.frozenIndices.has(i)) continue;
+      
+      const nextDecision = this.nextDecisionTimes.get(i) || 0;
+      if (now > nextDecision) {
+        // Make a new decision
+        const roll = Math.random();
+        const agent = this.agents[i];
+        
+        if (roll < 0.15) {
+          // Decide to go somewhere specific
+          let tx, tz;
+          
+          // Department-specific logic
+          if (agent.department === 'Engineering' && Math.random() < 0.5) {
+            // Engineers like to cluster or go to "server" area (let's say top-right)
+            tx = worldSize * 0.7 + (Math.random() - 0.5) * 5;
+            tz = worldSize * 0.7 + (Math.random() - 0.5) * 5;
+          } else if (agent.department === 'Marketing' && Math.random() < 0.5) {
+            // Marketing likes to be central or near the "lounge" (bottom-left)
+            tx = -worldSize * 0.7 + (Math.random() - 0.5) * 5;
+            tz = -worldSize * 0.7 + (Math.random() - 0.5) * 5;
+          } else {
+            // Random spot
+            tx = (Math.random() - 0.5) * worldSize * 1.8;
+            tz = (Math.random() - 0.5) * worldSize * 1.8;
+          }
+
+          this.stateBuffer.setWaypoint(i, tx, tz);
+          this.stateBuffer.setState(i, AgentBehavior.GOTO);
+          this.agentMissions.set(i, { type: 'goto', target: { x: tx, z: tz } });
+          
+          const details = agent.department === 'Engineering' && tx > 0 
+            ? `Agent ${i} (${agent.role}) is heading to the server room for maintenance.`
+            : agent.department === 'Marketing' && tx < 0
+            ? `Agent ${i} (${agent.role}) is going to the creative lounge for a brainstorm.`
+            : `Agent ${i} (${agent.role}) decided to head to a new location for a task.`;
+
+          useStore.getState().addAgentLog({
+            type: 'mission',
+            participants: [i],
+            details
+          });
+        } else if (roll < 0.4) {
+          // Return to boids (wandering)
+          this.stateBuffer.setState(i, AgentBehavior.BOIDS);
+          this.agentMissions.set(i, { type: 'idle' });
+        }
+        
+        // Next decision in 10-30 seconds (adjusted by timeScale)
+        const delay = (10000 + Math.random() * 20000) / timeScale;
+        this.nextDecisionTimes.set(i, now + delay);
+      }
+
+      // Check for GOTO arrival for NPCs
+      if (this.stateBuffer.getState(i) === AgentBehavior.GOTO) {
+        const wp = this.stateBuffer.getWaypoint(i);
+        const dx = wp.x - positions[i * 4];
+        const dz = wp.z - positions[i * 4 + 2];
+        if (dx * dx + dz * dz < PLAYER_ARRIVAL_RADIUS * PLAYER_ARRIVAL_RADIUS) {
+          this.stateBuffer.setState(i, AgentBehavior.BOIDS);
+          this.agentMissions.set(i, { type: 'idle' });
+        }
+      }
     }
 
-    // 2. Detect new NPC↔NPC collisions (skip index 0 = player)
+    // 3. Detect new NPC↔NPC collisions (skip index 0 = player)
     if (this.frozenPairs.size < MAX_FROZEN_PAIRS) {
       for (let i = 1; i < count - 1; i++) {
         if (this.frozenIndices.has(i)) continue;
@@ -92,7 +156,7 @@ export class BehaviorManager {
             this.frozenIndices.add(i);
             this.frozenIndices.add(j);
             const key = `${i}-${j}`;
-            this.frozenPairs.set(key, { a: i, b: j, expiresAt: now + FROZEN_DURATION_MS });
+            this.frozenPairs.set(key, { a: i, b: j, expiresAt: now + (FROZEN_DURATION_MS / timeScale) });
 
             useStore.getState().addAgentLog({
               type: 'conversation',
@@ -107,7 +171,7 @@ export class BehaviorManager {
       }
     }
 
-    // 3. Detect player GOTO arrival
+    // 4. Detect player GOTO arrival
     if (this.stateBuffer.getState(PLAYER_INDEX) === AgentBehavior.GOTO) {
       const wp = this.stateBuffer.getWaypoint(PLAYER_INDEX);
       const pdx = wp.x - positions[PLAYER_INDEX * 4];
@@ -134,7 +198,7 @@ export class BehaviorManager {
       }
     }
 
-    // 4. Detect player↔NPC proximity (encounter)
+    // 5. Detect player↔NPC proximity (encounter)
     const px = positions[PLAYER_INDEX * 4];
     const pz = positions[PLAYER_INDEX * 4 + 2];
     let nearestNPC: number | null = null;

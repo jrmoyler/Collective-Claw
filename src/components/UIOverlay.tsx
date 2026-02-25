@@ -23,10 +23,33 @@ const UIOverlay: React.FC = () => {
     endChat,
     isChatting,
     debugStates,
-    activeEncounter
+    activeEncounter,
+    error
   } = useStore();
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950 p-6">
+        <div className="max-w-md w-full bg-white rounded-[32px] p-10 shadow-2xl text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Activity size={32} />
+          </div>
+          <h2 className="text-2xl font-black text-zinc-900 mb-4 tracking-tight">Graphics Error</h2>
+          <p className="text-zinc-500 text-sm leading-relaxed mb-8">
+            {error}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-4 bg-zinc-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl"
+          >
+            Reload Application
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const selectedAgent = selectedNpcIndex != null ? AGENTS[selectedNpcIndex] ?? null : null;
   const hoveredAgent = hoveredNpcIndex != null ? AGENTS[hoveredNpcIndex] ?? null : null;
